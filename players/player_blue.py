@@ -42,7 +42,7 @@ def tick(state: State) -> List[Action]:
         flag = 0 # flag to check if we have given an action
         agent = state.agents[agent_id]
 
-        # alive conditions added
+        # alive conditions added branch D
         if not agent.is_alive():
             action = Action(agent_id,UPDATE_DIRECTION,Point(agent.get_direction().x,
                                   agent.get_direction().y))
