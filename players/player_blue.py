@@ -38,9 +38,15 @@ def tick(state: State) -> List[Action]:
     # return actions
     actions = []
     for agent_id in state.agents: 
+        
         flag = 0 # flag to check if we have given an action
         agent = state.agents[agent_id]
 
+        # alive conditions added
+        if not agent.is_alive():
+            action = Action(agent_id,UPDATE_DIRECTION,Point(agent.get_direction().x,
+                                  agent.get_direction().y))
+            flag = 1
         for alert in state.alerts:
             if alert.alert_type == COLLISION: # if collision with wall, update to opposite direction
                 type = UPDATE_DIRECTION
