@@ -1,4 +1,4 @@
-## THIS IS AN EMPTY BOT
+# THIS IS AN EMPTY BOT
 
 from constants import *
 import math
@@ -30,55 +30,89 @@ from typing import List
 
 def tick(state: State) -> List[Action]:
 
-    # actions = []
+
+    Team = state.team
+    Time = state.time
+    Obstacles = state.obstacles
+    Zone = state.zone
+    Safe_Zone = state.safe_zone
+    Is_Zone_Shinking = state.is_zone_shrinking
     
-    # # YOUR CODE GOES HERE
+    Enemy_locations = {}
+    Enemy_bullets = {}
+    for Viewer_id in state.object_in_sight: 
+        Objects = state.object_in_sight[Viewer_id]
+        Opponents = Objects.get('Agents')
+        Bullets = Objects.get('Bullets')
 
-    # # here we are just returning empty actions
-    # return actions
-    actions = []
-    for agent_id in state.agents: 
+        for Opponent in Opponents:
+            id = Opponent._id
+            dire = Opponent.get_direction()
+            loc = Opponent.get_location()
+            if Enemy_locations.get(id)==None:
+                Enemy_locations[id] = [loc,dire]
+
+        for Bullet in Bullets:
+            id = Bullet._id
+            dire = Bullet.get_direction()
+            loc = Bullet.get_location()
+            if Enemy_bullets.get(id)==None:
+                Enemy_bullets[id] = [loc,dire]
+
+
+    agents_actions = {}
+
+    """
+    multiple actions for all agent, 
+    each action is associated with a priority which represents how beneficial that action is,
+    at last most priority actions are more likely to happen   
+    """
+
+    # initialization for agents_actions
+    for agent_id in state.agents:
+        agents_actions[agent_id] = []
+
+    # alert triggered actions
+    for alert in state.alerts:
+        if alert.alert_type == COLLISION:
+            pass
+        elif alert.alert_type == ZONE:
+            pass
+        elif alert.alert_type == BULLET_HIT:
+            pass
+        elif alert.alert_type == DEAD:
+            #dead players can be used as sheild against enemy bullets
+            pass
+
+    # object sighting triggered actions
+    for Viewer_id in state.object_in_sight:
         
-        flag = 0 # flag to check if we have given an action
-        agent = state.agents[agent_id]
+        if Viewer_id in agents_actions.keys():
+            # viewer is agent
+            Objects = state.object_in_sight[Viewer_id]
+            Opponents = Objects.get('Agents')
+            Bullets = Objects.get('Bullets')
 
-        # alive conditions added
-        if not agent.is_alive():
-            action = Action(agent_id,UPDATE_DIRECTION,Point(agent.get_direction().x,
-                                  agent.get_direction().y))
-            flag = 1
-        for alert in state.alerts:
-            if alert.alert_type == COLLISION: # if collision with wall, update to opposite direction
-                type = UPDATE_DIRECTION
-                direction = Point(agent.get_direction().x,
-                                  agent.get_direction().y) + Point(random.uniform(-3, 3), random.uniform(-3, 3))
+            for Opponent in Opponents:
+                pass
+                # print(Opponent.get_direction())
 
-                action = Action(agent_id, type, direction) # create action
-                flag = 1
-                break
+            for Bullet in Bullets:
+                pass
+                # print(Bullet.get_location())
 
-        if flag == 0:
-            rand_val = random.uniform(0, 1)
-            # print(rand_val)
-            if rand_val < 0.3: # 30% chance to update view direction
-                type = UPDATE_VIEW_DIRECTION
-                current_direction = agent.get_view_direction()
-                direction = current_direction + \
-                    Point(random.uniform(-1, 1), random.uniform(-1, 1))
-            elif rand_val < 0.8: # 50% chance to update direction
-                type = UPDATE_DIRECTION
-                current_direction = agent.get_direction()
-                direction = current_direction + \
-                    Point(random.uniform(-1, 1), random.uniform(-1, 1))
-            else: # 20% chance to fire
-                type = FIRE
-                direction = Point(random.uniform(-1, 1), random.uniform(-1, 1))
+    final_actions = []
+    for agent in agents_actions:
+        actions = agents_actions[agent]
+        bestAction = Action(agent, UPDATE_DIRECTION,Point(1, 0))
 
-        action = Action(agent_id, type, direction)
-        actions.append(action)
+        for action in actions:
+            bestAction = Action(agent, UPDATE_DIRECTION,Point(1, 0))  # update best action
+        # final_actions.append[bestAction] # uncomment it to see print statements
+        final_actions.append(bestAction)
 
-    # return the actions of all the agents
-    return actions
+    return final_actions
+
 
 if __name__ == '__main__':
     server_port = ENV_PORT
@@ -102,4 +136,3 @@ if __name__ == '__main__':
         actions = tick(state)
         new_message = pickle.dumps(actions)
         blue_socket.sendto(new_message, (server_host, server_port))
-
