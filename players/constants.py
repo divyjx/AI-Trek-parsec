@@ -54,7 +54,7 @@ FIRE_IMPOSSIBLE: str = 'cannot_fire'
 WRONG_AGENT: str = 'opponent_agent'
 
 AGENT_RADIUS: int = 5
-BULLET_RADIUS: int = 2  # Only used for visualization
+BULLET_RADIUS: int = 3  # Only used for visualization
 AGENT_VIEW_RANGE: float = 30
 AGENTS_PER_TEAM: int = 5
 
