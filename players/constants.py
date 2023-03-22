@@ -68,7 +68,7 @@ TICKS: Dict[str, int] = {  # Ticks per second
 UNIT_TIME: int = TICKS['Bullet'] * TICKS['Agent']
 DAMAGES: Dict[str, int] = {
     BULLET_HIT: 10,
-    OUTSIDE_ZONE: 1
+    OUTSIDE_ZONE: 0
 }
 
 ZONE_COLORS: dict = {

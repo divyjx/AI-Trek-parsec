@@ -253,23 +253,24 @@ def tick(state: State) -> List[Action]:
 
 if __name__ == '__main__':
     server_port = ENV_PORT
-    server_host = 'localhost'
+    server_host = ENV_HOST
 
-    blue_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    blue_socket.settimeout(2)
+    red_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    red_socket.settimeout(2)
 
-    blue_host = 'localhost'
-    blue_port = BLUE_PORT
-    blue_socket.bind((blue_host, blue_port))
-    print("Blue player is ready to receive messages...")
+    red_host = 'localhost'
+    red_port = RED_PORT
+    red_socket.bind((red_host, red_port))
+
+    print("Red player is ready to receive messages...")
     while True:
         try:
-            environment_message, addr = blue_socket.recvfrom(65527)
+            environment_message, addr = red_socket.recvfrom(65527)
         except:
-            print("Environment Not Responding...Blue Closed")
-            blue_socket.close()
+            print("Environment Not Responding...Red Closed")
+            red_socket.close()
             sys.exit(1)
         state = pickle.loads(environment_message)
         actions = tick(state)
         new_message = pickle.dumps(actions)
-        blue_socket.sendto(new_message, (server_host, server_port))
+        red_socket.sendto(new_message, (server_host, server_port))
