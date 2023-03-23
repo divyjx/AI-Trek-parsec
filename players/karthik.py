@@ -32,7 +32,6 @@ from typing import List
 def turn_left(curr_dir: Point) -> Point:
     return Point(-curr_dir.y, curr_dir.x)
 
-
 def turn_right(curr_dir: Point) -> Point:
     return Point(curr_dir.y, -curr_dir.x)
     
@@ -41,36 +40,30 @@ def turn_back(curr_dir: Point) -> Point:
 
 # fire
 # red is opponent
-theta = math.asin(0.2) # 11 degrees
+def fire3(blue_location: Point, blue_direction: Point, red_location: Point, red_direction: Point) -> Point:
+    red_location.sub(blue_location)
+    alpha = (red_direction.get_angle() - red_location.get_angle())
+    alpha = math.radians(alpha)
+    theta = math.asin(math.sin(alpha) / 5)
+    theta += math.radians(red_location.get_angle())
+    print(math.degrees(theta))
+    return Point(math.cos(theta), math.sin(theta))
 
-def direct_fire(blue_location: Point, red_location: Point) -> Point:
-    return Point(red_location.x - blue_location.x, red_location.y - blue_location.y)
+def fire2(blue_location: Point, blue_direction: Point, red_location: Point, red_direction: Point) -> Point:
+    v1 = red_location
+    v1.sub(blue_location)
+    # print(v1)
+    # red_direction.make_unit_magnitude()
+    v1.add(red_direction)
+    return v1
 
-def left_fire(blue_location: Point, red_location: Point) -> Point: 
-    v = direct_fire(blue_location, red_location)
-    xx = v.x * math.cos(theta) - v.y * math.sin(theta)
-    yy = v.x * math.sin(theta) + v.y * math.cos(theta)
-    return Point(xx, yy)
-
-def right_fire(blue_location: Point, red_location: Point) -> Point:
-    v = direct_fire(blue_location, red_location)
-    xx = v.x * math.cos(-theta) - v.y * math.sin(-theta)
-    yy = v.x * math.sin(-theta) + v.y * math.cos(-theta)
-    return Point(xx, yy)
-    
-
-def fire(blue_location: Point, blue_direction: Point, red_location: Point, red_direction: Point) -> Point:
-    alpha = direct_fire(blue_location, red_location).get_angle()
-    rel = red_direction
-    rel.sub(blue_direction)
-    red_direction = rel
-    beta = Point(red_direction.x - direct_fire(blue_location, red_location).x, red_direction.y - direct_fire(blue_location, red_location).y).get_angle()
-    if alpha + theta >= beta and alpha - theta <= beta:
-        return direct_fire(blue_location, red_location)
-    elif alpha > beta:
-        return right_fire(blue_location, red_location)
-    else:
-        return left_fire(blue_location, red_location)
+def find_center(safe_zone_corners: List[Point], blue_location: Point):
+    xx, yy = blue_location.x, blue_location.y
+    safe_zone_corners.sort(key=lambda item: item.x)
+    x1, x2 = safe_zone_corners[0].x, safe_zone_corners[2].x
+    safe_zone_corners.sort(key=lambda item: item.y)
+    y1, y2 = safe_zone_corners[0].y, safe_zone_corners[2].y 
+    return Point((x2 + x1)/2 - xx, (y2 + y1)/2 - yy)
 
 
 def zone_check(blue_location: Point, blue_direction: Point, safe_zone_corners: List[Point]):
@@ -85,188 +78,103 @@ def zone_check(blue_location: Point, blue_direction: Point, safe_zone_corners: L
     if y1 > y2:
         y1, y2 = y2, y1 
     # print(x1, x2, y1, y2)
-    if xx < x1 or xx > x2 or yy < y1 or yy > y2:
+    if xx < x1+5 or xx > x2-5 or yy < y1+5 or yy > y2-5:
         away = True
     if away:
-        return [Point((x2 - x1)/2 - xx, (y2 - y1)/2 - yy), True]
+        return [Point((x2 + x1)/2 - xx, (y2 + y1)/2 - yy), True]
     return [Point(xx, yy), False]
 
-def tick(state: State) -> List[Action]:
-    # print(state.object_in_sight)
-    Team = state.team
-    Time = state.time
-    Obstacles = state.obstacles
-    Zone = state.zone
-    Safe_Zone = state.safe_zone
-    Is_Zone_Shinking = state.is_zone_shrinking
-
-    Enemy_locations = {}
-    Enemy_bullets = {}
-    for Viewer_id in state.object_in_sight:
-        Objects = state.object_in_sight[Viewer_id]
-        Opponents = Objects.get('Agents')
-        Bullets = Objects.get('Bullets')
-
-        for Opponent in Opponents:
-            id = Opponent._id
-            dire = Opponent.get_direction()
-            loc = Opponent.get_location()
-            if Enemy_locations.get(id) == None:
-                Enemy_locations[id] = [loc, dire]
-
-        for Bullet in Bullets:
-            id = Bullet._id
-            dire = Bullet.get_direction()
-            loc = Bullet.get_location()
-            if Enemy_bullets.get(id) == None:
-                Enemy_bullets[id] = [loc, dire]
-
-    agents_actions = {}
-
-    """
-    multiple actions for all agent, 
-    each action is associated with a priority which represents how beneficial that action is,
-    at last most priority actions are more likely to happen   
-    """
-
-    # initialization for agents_actions
-    for agent_id in state.agents:
-        agents_actions[agent_id] = []
-    # alert triggered actions
+def check_alerts(state: State) -> List[int]:
+    agents_alert_list = []
     for alert in state.alerts:
-        agent_id = alert.agent_id
-        agent = state.agents[agent_id]
-        dire = agent.get_direction()
-        type = None
-        action = None
         if alert.alert_type == COLLISION:
-            # reversed direction
-            newDire = Point(0, 0)
-            newDire.sub(dire)
-            action = Action(agent_id, UPDATE_DIRECTION, newDire)
-            agents_actions[agent_id].append((action, 0))
-            # pass
+            agents_alert_list.append(alert.agent_id)
+    return agents_alert_list
 
-        elif alert.alert_type == ZONE:
-            Sumx = 0
-            Sumy = 0
-            for point in Safe_Zone:
-                Sumx += point.x
-                Sumy += point.y
-            Sumx /= 4
-            Sumy /= 4
-            newDire = Point(Sumx, Sumy)
-            newDire.sub(agent.get_location())
-            # newDire=normalize new direction point
-            action = Action(agent_id, UPDATE_DIRECTION, newDire)
-            agents_actions[agent_id].append((action, 0))
+def explore(curr_dir: Point) -> Point:
+    p = random.uniform(0, 1)
+    if p < 0.5:
+        direction = turn_left(curr_dir)
+    # elif p < 0.6:
+    #     direction = turn_right(curr_dir)
+    else:
+        direction = turn_back(curr_dir)
+    return direction
 
-        elif alert.alert_type == BULLET_HIT:
-            pass
-        elif alert.alert_type == DEAD:
-            # dead players can be used as sheild against enemy bullets
-            pass
+def tick(state: State) -> List[Action]:
+    safe_zone = state.safe_zone
+    actions = []
+            
+    for agent_id in state.agents:
+        # choose an action for this agent
+        agent = state.agents[agent_id]
 
-    # object sighting triggered actions
-    for Viewer_id in state.object_in_sight:
+        # TODO: if stuck then update direction
+        if agent_id in check_alerts(state):
+            actions.append(Action(agent_id, UPDATE_DIRECTION, explore(agent.get_direction())))
+            continue
 
-        if Viewer_id in agents_actions.keys():
-            # viewer is agent
+        # if out of zone then update direction
+        zone_var = zone_check(agent.get_location(), agent.get_direction(), safe_zone)
+        if zone_var[1]:
+            # print("Out")
+            actions.append(Action(agent_id, UPDATE_DIRECTION, zone_var[0]))
+            continue
 
-            Objects = state.object_in_sight[Viewer_id]
-            Opponents = Objects.get('Agents')
-            Bullets = Objects.get('Bullets')
+        # if enemy in sight then fire
+        objects_sighted = state.object_in_sight.get(agent_id)
+        # print(objects_sighted) # {'Agents':[], 'Bullets':[]}
+        opp_list = objects_sighted['Agents']
+        shoot = False
+        for opp in opp_list:
+            fire_dir = fire3(agent.get_location(), agent.get_direction(), opp.get_location(), opp.get_direction())
+            actions.append(Action(agent_id, FIRE, fire_dir))
+            shoot = True
+            break
+        if shoot:
+            continue
 
-            for Opponent in Opponents:
-                # print(Opponent)
-                # opp_dir = Opponent.get_direction()
-                # opp_loc = Opponent.get_location()
+        # update view direction / direction with some probabilty
+        rand_val = random.uniform(0, 1)
+        if rand_val < 0.5:
+            type = UPDATE_DIRECTION
+            current_direction = agent.get_direction()
+            direction = current_direction + \
+                    Point(random.uniform(-1, 1), random.uniform(-1, 1))
+        elif rand_val < 0.55:
+            type = UPDATE_DIRECTION
+            current_direction = agent.get_direction()
+            direction = find_center(safe_zone, agent.get_location())
+        else:
+            type = UPDATE_VIEW_DIRECTION
+            current_direction = agent.get_view_direction()
+            direction = turn_left(current_direction)
 
-                pass
-                # print(Opponent.get_direction())
-
-            for Bullet in Bullets:
-                # print(Bullet)
-                pass
-                # print(Bullet.get_location())
-    for opp in Enemy_locations:
-        # find nearest agents
-        # print(Enemy_locations[opp])
-        for agent_id in state.agents:
-            agent = state.agents[agent_id]
-            dire = Enemy_locations.get(opp)[0]
-            # Adire = agent.get_location()
-
-            # dire.x = dire.x - Adire.x
-            # dire.y = dire.y - Adire.y
-            # dire.sub(agent.get_location())
-            # dire.make_unit_magnitude()
-            # print(dire)
-            # dire.x=-dire.x
-            # dire.y=-dire.y
-            dire = fire(agent.get_location(),agent.get_direction(),Enemy_locations.get(opp)[0],Enemy_locations.get(opp)[1])
-
-            action = Action(agent_id, FIRE, dire)
-            agents_actions[agent_id].append((action, 0))
-
-    final_actions = []
-    for agent in agents_actions:
-        actions = agents_actions[agent]
-        agentobj = state.agents[agent]
-        bestAction = Action(agent, UPDATE_DIRECTION, Point(1, 0))
-        # if state.agents[agent].can_fire():
-        #     bestAction = Action(agent, FIRE, Point(
-        #         random.uniform(-1, 1), random.uniform(-1, 1)))
-        # else:
-        Sumx = 0
-        Sumy = 0
-        for point in Safe_Zone:
-            Sumx += point.x
-            Sumy += point.y
-        Sumx /= 4
-        Sumy /= 4
-        newDire = Point(Sumx, Sumy)
-        newDire.sub(state.agents[agent].get_location())
-        # print(newDire)
-        dirr = Point(random.uniform(-1,1),random.uniform(-1,1))
-        dirr.make_unit_magnitude()
-        # bestAction = Action(agent, UPDATE_DIRECTION, newDire)
-        bestAction = Action(agent, UPDATE_VIEW_DIRECTION, turn_left(agentobj.get_view_direction()))
-        
-
-        for action in actions:
-            bestAction = action[0]  # update best action
-        # final_actions.append[bestAction] # uncomment it to see print statements
-        for agent_id in state.agents:
-            agent = state.agents[agent_id]
-            zone_var = zone_check(agent.get_location(), agent.get_direction(), Safe_Zone)
-            dir_change = zone_var[1]
-            if dir_change:
-                bestAction =  Action(agent_id, UPDATE_DIRECTION, zone_var[0])
-        final_actions.append(bestAction)
-
-    return final_actions
+        actions.append(Action(agent_id, type, direction))
+    # print(actions)
+    return actions
 
 
 if __name__ == '__main__':
     server_port = ENV_PORT
-    server_host = 'localhost'
+    server_host = ENV_HOST
 
-    blue_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    blue_socket.settimeout(2)
+    red_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    red_socket.settimeout(2)
 
-    blue_host = 'localhost'
-    blue_port = BLUE_PORT
-    blue_socket.bind((blue_host, blue_port))
-    print("Blue player is ready to receive messages...")
+    red_host = 'localhost'
+    red_port = RED_PORT
+    red_socket.bind((red_host, red_port))
+
+    print("Red player is ready to receive messages...")
     while True:
         try:
-            environment_message, addr = blue_socket.recvfrom(65527)
+            environment_message, addr = red_socket.recvfrom(65527)
         except:
-            print("Environment Not Responding...Blue Closed")
-            blue_socket.close()
+            print("Environment Not Responding...Red Closed")
+            red_socket.close()
             sys.exit(1)
         state = pickle.loads(environment_message)
         actions = tick(state)
         new_message = pickle.dumps(actions)
-        blue_socket.sendto(new_message, (server_host, server_port))
+        red_socket.sendto(new_message, (server_host, server_port))
