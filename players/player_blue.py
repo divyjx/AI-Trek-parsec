@@ -32,10 +32,8 @@ from models.Agent import Agent
 # TODO: normalize the parameter Point
 # update direction and view direction
 
-
 def turn_left(curr_dir: Point) -> Point:
     return Point(-curr_dir.y, curr_dir.x)
-
     # for 10 deg left rotations
     # curr_dir = Point(curr_dir.x, curr_dir.y)
     # an = curr_dir.get_angle()
@@ -46,46 +44,37 @@ def turn_left(curr_dir: Point) -> Point:
 
 def turn_right(curr_dir: Point) -> Point:
     return Point(curr_dir.y, -curr_dir.x)
-
-
+    
 def turn_back(curr_dir: Point) -> Point:
     return Point(-curr_dir.x, -curr_dir.y)
 
-
 # fire
 # red is opponent
-# theta = math.asin(0.1) # 11 degrees
-theta = math.pi/180  # 1 degrees
-
+theta = math.asin(0.1) # 11 degrees
 
 def direct_fire(blue_location: Point, red_location: Point) -> Point:
     return Point(red_location.x - blue_location.x, red_location.y - blue_location.y)
 
-
-def left_fire(blue_location: Point, red_location: Point) -> Point:
+def left_fire(blue_location: Point, red_location: Point) -> Point: 
     v = direct_fire(blue_location, red_location)
-    # theta = math.pi/180
     xx = v.x * math.cos(theta) - v.y * math.sin(theta)
     yy = v.x * math.sin(theta) + v.y * math.cos(theta)
     return Point(xx, yy)
-
 
 def right_fire(blue_location: Point, red_location: Point) -> Point:
     v = direct_fire(blue_location, red_location)
     xx = v.x * math.cos(-theta) - v.y * math.sin(-theta)
     yy = v.x * math.sin(-theta) + v.y * math.cos(-theta)
     return Point(xx, yy)
-
+    
 
 def fire(blue_location: Point, blue_direction: Point, red_location: Point, red_direction: Point) -> Point:
     alpha = direct_fire(blue_location, red_location).get_angle()
     rel = red_direction
     rel.sub(blue_direction)
     red_direction = rel
-    beta = Point(red_direction.x - direct_fire(blue_location, red_location).x,
-                 red_direction.y - direct_fire(blue_location, red_location).y).get_angle()
-
-    if alpha + math.degrees(theta) >= beta and alpha - math.degrees(theta) <= beta:
+    beta = Point(red_direction.x - direct_fire(blue_location, red_location).x, red_direction.y - direct_fire(blue_location, red_location).y).get_angle()
+    if alpha + 15 >= beta and alpha - 15 <= beta:
         return direct_fire(blue_location, red_location)
     elif alpha > beta:
         return right_fire(blue_location, red_location)
@@ -93,21 +82,23 @@ def fire(blue_location: Point, blue_direction: Point, red_location: Point, red_d
         return left_fire(blue_location, red_location)
 
 
-# (-200,-200) if safe else center
-def Zone_check(location: Point, direction: Point, safe_zone: List[Point]) -> Point:
-    sumX = 0
-    sumY = 0
-    for point in safe_zone:
-        sumX += point.x
-        sumY += point.y
-    center = Point(sumX/4, sumY/4)
-    # sorting
-    safe_zone.sort(key=lambda item: item.x)
-    safe_zone.sort(key=lambda item: item.y)
-
-    # complete this functions
-
-    pass
+def zone_check(blue_location: Point, blue_direction: Point, safe_zone_corners: List[Point]):
+    xx, yy = blue_location.x, blue_location.y
+    away = False
+    safe_zone_corners.sort(key=lambda item: item.x)
+    x1, x2 = safe_zone_corners[0].x, safe_zone_corners[2].x
+    safe_zone_corners.sort(key=lambda item: item.y)
+    y1, y2 = safe_zone_corners[0].y, safe_zone_corners[2].y 
+    if x1 > x2:
+        x1, x2 = x2, x1
+    if y1 > y2:
+        y1, y2 = y2, y1 
+    # print(x1, x2, y1, y2)
+    if xx < x1+5 or xx > x2-5 or yy < y1+5 or yy > y2-5:
+        away = True
+    if away:
+        return [Point((x2 + x1)/2 - xx, (y2 + y1)/2 - yy), True]
+    return [Point(xx, yy), False]
 
 
 def friend_not_in_line(fire_direction: Point, agent: Agent, other: List[Agent]) -> bool:
@@ -117,10 +108,9 @@ def friend_not_in_line(fire_direction: Point, agent: Agent, other: List[Agent]) 
         diff_vector.sub(agent.get_location())
         diff_vector = diff_vector.get_angle()
         # 10 deg diff or distance is more than 50
-        if ((abs(fire_direction - diff_vector)) < 10) or (friend.get_location().distance(agent.get_location()) < 60):
+        if ((abs(fire_direction - diff_vector)) < 10) and (friend.get_location().distance(agent.get_location()) < 60):
             return False
     return True
-    pass
 
 
 def tick(state: State) -> List[Action]:
@@ -163,7 +153,7 @@ def tick(state: State) -> List[Action]:
 
     # initialization for agents_actions
     for agent_id in state.agents:
-        agents_actions[agent_id] = []
+        agents_actions[agent_id] = [] 
 
     # alert triggered actions
     for alert in state.alerts:
@@ -236,14 +226,23 @@ def tick(state: State) -> List[Action]:
         for Bullet in Bullets:
             # update_direction/fire action acc to bullet direction and location
             pass
+        
+        # update zone directions
+        # zone_var = zone_check(agent.get_location(),agent.get_direction(),Safe_Zone)
+        # dir_change = zone_var[1]
+        # if dir_change:
+        #     action = Action (agent.id(),UPDATE_DIRECTION,zone_var[0])
+        #     agents_actions[Viewer_id].append((action,0))
 
     final_actions = []
-    for agent in agents_actions:
-        actions = agents_actions[agent]
-        agentobj = state.agents[agent]
+    for agent_id in agents_actions:
+        agent = state.agents[agent_id]
         # bestAction = Action(agent, UPDATE_DIRECTION, Point(1, 0)) # -->> move left only
-        bestAction = Action(agent, UPDATE_VIEW_DIRECTION, turn_left(
-            agentobj.get_view_direction()))  # -->> default turn_left action
+        bestAction = Action(agent_id, UPDATE_VIEW_DIRECTION, turn_left(agent.get_view_direction()))  # -->> default turn_left action
+        ZoneCheck = zone_check(agent.get_location(),agent.get_direction(),Safe_Zone)
+        if ZoneCheck[1]:
+            agents_actions[agent_id].append((Action(agent_id,UPDATE_DIRECTION,ZoneCheck[0]),0))
+        actions = agents_actions[agent_id]
         for action in actions:
             bestAction = action[0]  # update to last added action
         final_actions.append(bestAction)
