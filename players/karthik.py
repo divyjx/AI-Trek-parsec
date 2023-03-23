@@ -27,11 +27,11 @@ from typing import List
 #              "time} \n Obstacles: {obstacles} \n Zone: {zone} \n Safe Zone: {safe_zone} \n Is Zone Shrinking: {" \
 #              "is_zone_shrinking} "
 
-
 # TODO: normalize the parameter Point
 # update direction and view direction
 def turn_left(curr_dir: Point) -> Point:
     return Point(-curr_dir.y, curr_dir.x)
+
 
 def turn_right(curr_dir: Point) -> Point:
     return Point(curr_dir.y, -curr_dir.x)
@@ -61,6 +61,9 @@ def right_fire(blue_location: Point, red_location: Point) -> Point:
 
 def fire(blue_location: Point, blue_direction: Point, red_location: Point, red_direction: Point) -> Point:
     alpha = direct_fire(blue_location, red_location).get_angle()
+    rel = red_direction
+    rel.sub(blue_direction)
+    red_direction = rel
     beta = Point(red_direction.x - direct_fire(blue_location, red_location).x, red_direction.y - direct_fire(blue_location, red_location).y).get_angle()
     if alpha + theta >= beta and alpha - theta <= beta:
         return direct_fire(blue_location, red_location)
@@ -70,47 +73,179 @@ def fire(blue_location: Point, blue_direction: Point, red_location: Point, red_d
         return left_fire(blue_location, red_location)
 
 
+def zone_check(blue_location: Point, blue_direction: Point, safe_zone_corners: List[Point]):
+    xx, yy = blue_location.x, blue_location.y
+    away = False
+    safe_zone_corners.sort(key=lambda item: item.x)
+    x1, x2 = safe_zone_corners[0].x, safe_zone_corners[2].x
+    safe_zone_corners.sort(key=lambda item: item.y)
+    y1, y2 = safe_zone_corners[0].y, safe_zone_corners[2].y 
+    if x1 > x2:
+        x1, x2 = x2, x1
+    if y1 > y2:
+        y1, y2 = y2, y1 
+    # print(x1, x2, y1, y2)
+    if xx < x1 or xx > x2 or yy < y1 or yy > y2:
+        away = True
+    if away:
+        return [Point((x2 - x1)/2 - xx, (y2 - y1)/2 - yy), True]
+    return [Point(xx, yy), False]
+
 def tick(state: State) -> List[Action]:
-    actions = []
-    for agent_id in state.agents: 
-        flag = 0 # flag to check if we have given an action
+    # print(state.object_in_sight)
+    Team = state.team
+    Time = state.time
+    Obstacles = state.obstacles
+    Zone = state.zone
+    Safe_Zone = state.safe_zone
+    Is_Zone_Shinking = state.is_zone_shrinking
+
+    Enemy_locations = {}
+    Enemy_bullets = {}
+    for Viewer_id in state.object_in_sight:
+        Objects = state.object_in_sight[Viewer_id]
+        Opponents = Objects.get('Agents')
+        Bullets = Objects.get('Bullets')
+
+        for Opponent in Opponents:
+            id = Opponent._id
+            dire = Opponent.get_direction()
+            loc = Opponent.get_location()
+            if Enemy_locations.get(id) == None:
+                Enemy_locations[id] = [loc, dire]
+
+        for Bullet in Bullets:
+            id = Bullet._id
+            dire = Bullet.get_direction()
+            loc = Bullet.get_location()
+            if Enemy_bullets.get(id) == None:
+                Enemy_bullets[id] = [loc, dire]
+
+    agents_actions = {}
+
+    """
+    multiple actions for all agent, 
+    each action is associated with a priority which represents how beneficial that action is,
+    at last most priority actions are more likely to happen   
+    """
+
+    # initialization for agents_actions
+    for agent_id in state.agents:
+        agents_actions[agent_id] = []
+    # alert triggered actions
+    for alert in state.alerts:
+        agent_id = alert.agent_id
         agent = state.agents[agent_id]
+        dire = agent.get_direction()
+        type = None
+        action = None
+        if alert.alert_type == COLLISION:
+            # reversed direction
+            newDire = Point(0, 0)
+            newDire.sub(dire)
+            action = Action(agent_id, UPDATE_DIRECTION, newDire)
+            agents_actions[agent_id].append((action, 0))
+            # pass
 
-        # for alert in state.alerts:
-        #     if alert.alert_type == COLLISION: # if collision with wall, update to opposite direction
-        #         type = UPDATE_DIRECTION
-        #         direction = Point(agent.get_direction().x,
-        #                           agent.get_direction().y) + Point(random.uniform(-3, 3), random.uniform(-3, 3))
+        elif alert.alert_type == ZONE:
+            Sumx = 0
+            Sumy = 0
+            for point in Safe_Zone:
+                Sumx += point.x
+                Sumy += point.y
+            Sumx /= 4
+            Sumy /= 4
+            newDire = Point(Sumx, Sumy)
+            newDire.sub(agent.get_location())
+            # newDire=normalize new direction point
+            action = Action(agent_id, UPDATE_DIRECTION, newDire)
+            agents_actions[agent_id].append((action, 0))
 
-        #         action = Action(agent_id, type, direction) # create action
-        #         flag = 1
-        #         break
+        elif alert.alert_type == BULLET_HIT:
+            pass
+        elif alert.alert_type == DEAD:
+            # dead players can be used as sheild against enemy bullets
+            pass
 
-        if flag == 0:
-            rand_val = random.uniform(0, 1)
-            # rand_val = 0.5
-            if rand_val < 0.3: # 30% chance to update view direction
-                type = UPDATE_VIEW_DIRECTION
-                current_direction = agent.get_view_direction()
-                # direction = current_direction + \
-                #     Point(random.uniform(-1, 1), random.uniform(-1, 1))
-                direction = turn_back(current_direction)
-            elif rand_val < 0.8: # 50% chance to update direction
-                type = UPDATE_DIRECTION
-                current_direction = agent.get_direction()
-                # direction = current_direction + \
-                #     Point(random.uniform(-1, 1), random.uniform(-1, 1))
-                direction = turn_left(current_direction)
-            else: # 20% chance to fire
-                type = FIRE
-                direction = Point(random.uniform(-1, 1), random.uniform(-1, 1))
+    # object sighting triggered actions
+    for Viewer_id in state.object_in_sight:
 
-        action = Action(agent_id, type, direction)
-        actions.append(action)
+        if Viewer_id in agents_actions.keys():
+            # viewer is agent
 
-    # return the actions of all the agents
-    return actions
+            Objects = state.object_in_sight[Viewer_id]
+            Opponents = Objects.get('Agents')
+            Bullets = Objects.get('Bullets')
 
+            for Opponent in Opponents:
+                # print(Opponent)
+                # opp_dir = Opponent.get_direction()
+                # opp_loc = Opponent.get_location()
+
+                pass
+                # print(Opponent.get_direction())
+
+            for Bullet in Bullets:
+                # print(Bullet)
+                pass
+                # print(Bullet.get_location())
+    for opp in Enemy_locations:
+        # find nearest agents
+        # print(Enemy_locations[opp])
+        for agent_id in state.agents:
+            agent = state.agents[agent_id]
+            dire = Enemy_locations.get(opp)[0]
+            # Adire = agent.get_location()
+
+            # dire.x = dire.x - Adire.x
+            # dire.y = dire.y - Adire.y
+            # dire.sub(agent.get_location())
+            # dire.make_unit_magnitude()
+            # print(dire)
+            # dire.x=-dire.x
+            # dire.y=-dire.y
+            dire = fire(agent.get_location(),agent.get_direction(),Enemy_locations.get(opp)[0],Enemy_locations.get(opp)[1])
+
+            action = Action(agent_id, FIRE, dire)
+            agents_actions[agent_id].append((action, 0))
+
+    final_actions = []
+    for agent in agents_actions:
+        actions = agents_actions[agent]
+        agentobj = state.agents[agent]
+        bestAction = Action(agent, UPDATE_DIRECTION, Point(1, 0))
+        # if state.agents[agent].can_fire():
+        #     bestAction = Action(agent, FIRE, Point(
+        #         random.uniform(-1, 1), random.uniform(-1, 1)))
+        # else:
+        Sumx = 0
+        Sumy = 0
+        for point in Safe_Zone:
+            Sumx += point.x
+            Sumy += point.y
+        Sumx /= 4
+        Sumy /= 4
+        newDire = Point(Sumx, Sumy)
+        newDire.sub(state.agents[agent].get_location())
+        # print(newDire)
+        dirr = Point(random.uniform(-1,1),random.uniform(-1,1))
+        dirr.make_unit_magnitude()
+        # bestAction = Action(agent, UPDATE_DIRECTION, newDire)
+        bestAction = Action(agent, UPDATE_VIEW_DIRECTION, turn_left(agentobj.get_view_direction()))
+        
+
+        for action in actions:
+            bestAction = action[0]  # update best action
+        # final_actions.append[bestAction] # uncomment it to see print statements
+        for agent_id in state.agents:
+            agent = state.agents[agent_id]
+            zone_var = zone_check(agent.get_location(), agent.get_direction(), Safe_Zone)
+            dir_change = zone_var[1]
+            if dir_change:
+                bestAction =  Action(agent_id, UPDATE_DIRECTION, zone_var[0])
+        final_actions.append(bestAction)
+
+    return final_actions
 
 
 if __name__ == '__main__':
