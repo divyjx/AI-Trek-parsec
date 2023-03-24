@@ -158,12 +158,12 @@ def tick(state: State) -> List[Action]:
 
         # update view direction / direction with some probabilty
         rand_val = random.uniform(0, 1)
-        if rand_val < 0.5:
+        if rand_val < 0.25:
             type = UPDATE_DIRECTION
             current_direction = agent.get_direction()
             direction = current_direction + \
                     Point(random.uniform(-1, 1), random.uniform(-1, 1))
-        elif rand_val < 0.55:
+        elif rand_val < 0.3:
             type = UPDATE_DIRECTION
             current_direction = agent.get_direction()
             direction = find_center(safe_zone, agent.get_location())

@@ -91,7 +91,7 @@ def check_alerts(state: State) -> List[int]:
 
 def explore(curr_dir: Point) -> Point:
     p = random.uniform(0, 1)
-    if p < 0.7:
+    if p < 0.9:
         direction = turn_left(curr_dir)
     # elif p < 0.6:
     #     direction = turn_right(curr_dir)
@@ -106,7 +106,6 @@ def tick(state: State) -> List[Action]:
     for agent_id in state.agents:
         # choose an action for this agent
         agent = state.agents[agent_id]
-
         # TODO: if stuck then update direction
         if agent_id in check_alerts(state):
             actions.append(Action(agent_id, UPDATE_DIRECTION, explore(agent.get_direction())))

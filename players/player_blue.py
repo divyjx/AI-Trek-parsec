@@ -45,7 +45,6 @@ def penNpaper_fire(blue_location: Point, blue_direction: Point, red_location: Po
     alpha = math.radians(alpha)
     theta = math.asin(math.sin(alpha) / 5)
     theta += math.radians(red_location.get_angle())
-    # print(math.degrees(theta))
     return Point(math.cos(theta), math.sin(theta))
 
 def find_center(safe_zone_corners: List[Point]):
@@ -66,8 +65,8 @@ def zone_check(blue_location: Point, blue_direction: Point, safe_zone_corners: L
         x1, x2 = x2, x1
     if y1 > y2:
         y1, y2 = y2, y1 
-    # print(x1, x2, y1, y2)
-    if xx < x1+5 or xx > x2-5 or yy < y1+5 or yy > y2-5:
+
+    if xx < x1+10 or xx > x2-10 or yy < y1+10 or yy > y2-10:
         away = True
     if away:
         return [Point((x2 + x1)/2 - xx, (y2 + y1)/2 - yy), True]
@@ -82,10 +81,8 @@ def check_alerts(state: State) -> List[int]:
 
 def explore(curr_dir: Point) -> Point:
     p = random.uniform(0, 1)
-    if p < 0.7:
+    if p < 0.9:
         direction = turn_left(curr_dir)
-    # elif p < 0.6:
-    #     direction = turn_right(curr_dir)
     else:
         direction = turn_back(curr_dir)
     return direction
@@ -131,7 +128,6 @@ def tick(state: State) -> List[Action]:
                 else:
                     dir = turn_left(opp_fire_direction)
                 actions.append(Action(agent_id, UPDATE_DIRECTION, dir))
-                print("back")
                 shoot = True
                 break
         if shoot:
@@ -139,12 +135,12 @@ def tick(state: State) -> List[Action]:
 
         # update view direction / direction with some probabilty
         rand_val = random.uniform(0, 1)
-        if rand_val < 0.025:
+        if rand_val < 0.23:
             type = UPDATE_DIRECTION
             current_direction = agent.get_direction()
             direction = current_direction + \
                     Point(random.uniform(-1, 1), random.uniform(-1, 1))
-        elif rand_val < 0.03:
+        elif rand_val < 0.30:
             type = UPDATE_DIRECTION
             current_direction = agent.get_direction()
             direction = find_center(safe_zone)
