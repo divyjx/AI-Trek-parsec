@@ -94,7 +94,9 @@ def tick(state: State) -> List[Action]:
     for agent_id in state.agents:
         # choose an action for this agent
         agent = state.agents[agent_id]
-
+        if not agent.is_alive():
+            actions.append(Action(agent_id, UPDATE_VIEW_DIRECTION, Point(0, 1)))
+            continue
         if agent_id in check_alerts(state):
             actions.append(Action(agent_id, UPDATE_DIRECTION, explore(agent.get_direction())))
             continue
