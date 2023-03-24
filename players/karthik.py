@@ -46,7 +46,7 @@ def fire3(blue_location: Point, blue_direction: Point, red_location: Point, red_
     alpha = math.radians(alpha)
     theta = math.asin(math.sin(alpha) / 5)
     theta += math.radians(red_location.get_angle())
-    print(math.degrees(theta))
+    # print(math.degrees(theta))
     return Point(math.cos(theta), math.sin(theta))
 
 def fire2(blue_location: Point, blue_direction: Point, red_location: Point, red_direction: Point) -> Point:
@@ -57,14 +57,12 @@ def fire2(blue_location: Point, blue_direction: Point, red_location: Point, red_
     v1.add(red_direction)
     return v1
 
-def find_center(safe_zone_corners: List[Point], blue_location: Point):
-    xx, yy = blue_location.x, blue_location.y
+def find_center(safe_zone_corners: List[Point]):
     safe_zone_corners.sort(key=lambda item: item.x)
     x1, x2 = safe_zone_corners[0].x, safe_zone_corners[2].x
     safe_zone_corners.sort(key=lambda item: item.y)
     y1, y2 = safe_zone_corners[0].y, safe_zone_corners[2].y 
-    return Point((x2 + x1)/2 - xx, (y2 + y1)/2 - yy)
-
+    return Point((x2 + x1)/2, (y2 + y1)/2)
 
 def zone_check(blue_location: Point, blue_direction: Point, safe_zone_corners: List[Point]):
     xx, yy = blue_location.x, blue_location.y
@@ -93,7 +91,7 @@ def check_alerts(state: State) -> List[int]:
 
 def explore(curr_dir: Point) -> Point:
     p = random.uniform(0, 1)
-    if p < 0.5:
+    if p < 0.7:
         direction = turn_left(curr_dir)
     # elif p < 0.6:
     #     direction = turn_right(curr_dir)
@@ -125,12 +123,20 @@ def tick(state: State) -> List[Action]:
         objects_sighted = state.object_in_sight.get(agent_id)
         # print(objects_sighted) # {'Agents':[], 'Bullets':[]}
         opp_list = objects_sighted['Agents']
+        bullet_list = objects_sighted['Bullets']
         shoot = False
         for opp in opp_list:
             fire_dir = fire3(agent.get_location(), agent.get_direction(), opp.get_location(), opp.get_direction())
             actions.append(Action(agent_id, FIRE, fire_dir))
             shoot = True
             break
+        for bullet in bullet_list:
+            opp_fire_direction = bullet.get_direction()
+            danger_fire_direction = fire3(bullet.get_location(), bullet.get_direction(), agent.get_location(), agent.get_direction())
+            if opp_fire_direction.get_angle() <= danger_fire_direction.get_angle()+2 and opp_fire_direction.get_angle() >= danger_fire_direction.get_angle()-2:
+                actions.append(Action(agent_id, UPDATE_DIRECTION, turn_back(agent.get_direction())))
+                shoot = True
+                break
         if shoot:
             continue
 
@@ -144,7 +150,8 @@ def tick(state: State) -> List[Action]:
         elif rand_val < 0.55:
             type = UPDATE_DIRECTION
             current_direction = agent.get_direction()
-            direction = find_center(safe_zone, agent.get_location())
+            direction = find_center(safe_zone)
+            direction.sub(agent.get_location())
         else:
             type = UPDATE_VIEW_DIRECTION
             current_direction = agent.get_view_direction()
