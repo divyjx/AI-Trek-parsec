@@ -123,8 +123,15 @@ def tick(state: State) -> List[Action]:
         for bullet in bullet_list:
             opp_fire_direction = bullet.get_direction()
             danger_fire_direction = penNpaper_fire(bullet.get_location(), bullet.get_direction(), agent.get_location(), agent.get_direction())
-            if opp_fire_direction.get_angle() <= danger_fire_direction.get_angle()+2 and opp_fire_direction.get_angle() >= danger_fire_direction.get_angle()-2:
-                actions.append(Action(agent_id, UPDATE_DIRECTION, turn_back(agent.get_direction())))
+            if opp_fire_direction.get_angle() <= danger_fire_direction.get_angle()+5 and opp_fire_direction.get_angle() >= danger_fire_direction.get_angle()-5:
+                ofd = opp_fire_direction
+                ofd.sub(agent.get_direction())
+                if ofd.get_angle() < opp_fire_direction.get_angle():
+                    dir = turn_right(opp_fire_direction)
+                else:
+                    dir = turn_left(opp_fire_direction)
+                actions.append(Action(agent_id, UPDATE_DIRECTION, dir))
+                print("back")
                 shoot = True
                 break
         if shoot:
@@ -132,12 +139,12 @@ def tick(state: State) -> List[Action]:
 
         # update view direction / direction with some probabilty
         rand_val = random.uniform(0, 1)
-        if rand_val < 0.25:
+        if rand_val < 0.025:
             type = UPDATE_DIRECTION
             current_direction = agent.get_direction()
             direction = current_direction + \
                     Point(random.uniform(-1, 1), random.uniform(-1, 1))
-        elif rand_val < 0.3:
+        elif rand_val < 0.03:
             type = UPDATE_DIRECTION
             current_direction = agent.get_direction()
             direction = find_center(safe_zone)

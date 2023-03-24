@@ -130,13 +130,13 @@ def tick(state: State) -> List[Action]:
             actions.append(Action(agent_id, FIRE, fire_dir))
             shoot = True
             break
-        for bullet in bullet_list:
-            opp_fire_direction = bullet.get_direction()
-            danger_fire_direction = fire3(bullet.get_location(), bullet.get_direction(), agent.get_location(), agent.get_direction())
-            if opp_fire_direction.get_angle() <= danger_fire_direction.get_angle()+2 and opp_fire_direction.get_angle() >= danger_fire_direction.get_angle()-2:
-                actions.append(Action(agent_id, UPDATE_DIRECTION, turn_back(agent.get_direction())))
-                shoot = True
-                break
+        # for bullet in bullet_list:
+        #     opp_fire_direction = bullet.get_direction()
+        #     danger_fire_direction = fire3(bullet.get_location(), bullet.get_direction(), agent.get_location(), agent.get_direction())
+        #     if opp_fire_direction.get_angle() <= danger_fire_direction.get_angle()+2 and opp_fire_direction.get_angle() >= danger_fire_direction.get_angle()-2:
+        #         actions.append(Action(agent_id, UPDATE_DIRECTION, turn_back(agent.get_direction())))
+        #         shoot = True
+        #         break
         if shoot:
             continue
 

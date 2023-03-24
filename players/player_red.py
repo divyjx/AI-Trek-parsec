@@ -47,8 +47,8 @@ def tick(state: State) -> List[Action]:
                 break
 
         if flag == 0:
-            rand_val = random.uniform(0, 1)
-            # rand_val = 0.9
+            # rand_val = random.uniform(0, 1)
+            rand_val = 0.9
             # print(rand_val)
             if rand_val < 0.3: # 30% chance to update view direction
                 type = UPDATE_VIEW_DIRECTION
