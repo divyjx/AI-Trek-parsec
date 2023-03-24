@@ -102,7 +102,6 @@ def tick(state: State) -> List[Action]:
         # if out of zone then update direction
         zone_var = zone_check(agent.get_location(), agent.get_direction(), safe_zone)
         if zone_var[1]:
-            # print("Out")
             actions.append(Action(agent_id, UPDATE_DIRECTION, zone_var[0]))
             continue
 
@@ -117,6 +116,10 @@ def tick(state: State) -> List[Action]:
             actions.append(Action(agent_id, FIRE, fire_dir))
             shoot = True
             break
+
+        if shoot:
+            continue
+
         for bullet in bullet_list:
             opp_fire_direction = bullet.get_direction()
             danger_fire_direction = penNpaper_fire(bullet.get_location(), bullet.get_direction(), agent.get_location(), agent.get_direction())
@@ -130,6 +133,7 @@ def tick(state: State) -> List[Action]:
                 actions.append(Action(agent_id, UPDATE_DIRECTION, dir))
                 shoot = True
                 break
+            
         if shoot:
             continue
 
@@ -148,7 +152,7 @@ def tick(state: State) -> List[Action]:
         else:
             type = UPDATE_VIEW_DIRECTION
             current_direction = agent.get_view_direction()
-            direction = turn_left(current_direction)
+            direction = random.choice([turn_left(current_direction), turn_back(current_direction)])
 
         actions.append(Action(agent_id, type, direction))
     return actions
